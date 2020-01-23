@@ -156,6 +156,16 @@ def process(fn_in, fn_mask):
     return a, ss
 
 
+def load_images(fns):
+    rv = []
+    for i, fn in enumerate(fns):
+        mask_fn = ''
+        a, ss = process(fn, mask_fn)
+        rv += [[i, a, ss]]
+
+    return rv
+
+
 def compared_metadata(fns, rv):
     b = rv[0][-1]
     for i, fn in enumerate(fns):
@@ -193,21 +203,7 @@ def compared_metadata(fns, rv):
                     print(fns[0], fns[i], k, b[k], c[k])
 
 
-def main():
-    if len(sys.argv) <= 1:
-        print(f'Usage: {sys.argv[0]} <filename> ...')
-        sys.exit(1)
-
-    fns = sys.argv[1:]
-
-    rv = []
-    for i, fn in enumerate(fns):
-        mask_fn = ''
-        a, ss = process(fn, mask_fn)
-        rv += [[i, a, ss]]
-
-    compared_metadata(fns, rv)
-
+def find_range(fns, rv):
     mn = 1000
     mx = -1000
     print('id,min,mean,median,max,overall_min,overall_max')
@@ -229,17 +225,10 @@ def main():
         mn = np.floor(mn)
         mx = np.ceil(mx)
 
-    if False:
-        for i in range(len(rv)):
-            m = rv[i][1].flatten()
-            plt.hist(m, bins=128, range=(mn, mx))
-            plt.show()
+    return mn, mx
 
-    cmap = cv2.imread('pal.png')
-    if cmap is not None:
-        cmap = cmap[0, :, :]
-        print('Read colormap with shape:', cmap.shape)
 
+def create_image(img, mn, mx, fns, cmap):
     def h(img, v):
         # Return the location of the first pixel equal to the value v.
         m = np.where(img == v)
@@ -247,31 +236,29 @@ def main():
         rv = (x, y, img[y, x])
         return rv
 
-    for i, fn in enumerate(fns):
-        img = rv[i][1]
+    min_sp = h(img, img.min())
+    max_sp = h(img, img.max())
 
-        min_sp = h(img, img.min())
-        max_sp = h(img, img.max())
+    img = (img - mn) / float(mx - mn)
 
-        img = (img - mn) / float(mx - mn)
+    sf = 4
+    img = cv2.resize(img, None, fx=sf, fy=sf, interpolation=cv2.INTER_CUBIC)
 
-        sf = 4
-        img = cv2.resize(img, None, fx=sf, fy=sf, interpolation=cv2.INTER_CUBIC)
+    cv2.circle(img, (min_sp[0] * sf, min_sp[1] * sf), 11, 1, 2)
+    cv2.circle(img, (max_sp[0] * sf, max_sp[1] * sf), 11, 0, 2)
 
-        cv2.circle(img, (min_sp[0] * sf, min_sp[1] * sf), 11, 1, 2)
-        cv2.circle(img, (max_sp[0] * sf, max_sp[1] * sf), 11, 0, 2)
+    if cmap is not None and False:
+        c = []
+        xp = np.linspace(0, 1, cmap.shape[0])
+        c = [np.interp(img, xp, cmap[:, j]) for j in range(3)]
+        img = cv2.merge(c)
+        img = np.clip(img, 0, 255).astype(np.uint8)
+    else:
+        img = np.clip(img * 255, 0, 255).astype(np.uint8)
+        img = cv2.applyColorMap(img, cv2.COLORMAP_JET)
+        # img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
-        if cmap is not None and False:
-            c = []
-            xp = np.linspace(0, 1, cmap.shape[0])
-            c = [np.interp(img, xp, cmap[:, j]) for j in range(3)]
-            img = cv2.merge(c)
-            img = np.clip(img, 0, 255).astype(np.uint8)
-        else:
-            img = np.clip(img * 255, 0, 255).astype(np.uint8)
-            img = cv2.applyColorMap(img, cv2.COLORMAP_JET)
-            # img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-
+    if True:
         font = cv2.FONT_HERSHEY_SIMPLEX
         fontScale = .6
         color = (0, 0, 0)
@@ -287,15 +274,50 @@ def main():
         s = 2
         org1 = (10, 30)
         org2 = (org1[0], org1[1] + textSize[0][1] + textSize[1] + s)
-        x1 = min(org1[0], org2[0]) if len(fns) > 1 else org1[0]
-        x2 = max(org1[0], org2[0]) if len(fns) > 1 else org1[0]
-        y1 = min(org1[1], org2[1]) if len(fns) > 1 else org1[1]
-        y2 = max(org1[1], org2[1]) if len(fns) > 1 else org1[1]
+
+        x1, x2 = org1[0], org1[0]
+        y1, y2 = org1[1], org1[1]
+        if len(fns) > 1:
+            x1, x2 = min(x1, org2[0]), max(x2, org2[0])
+            y1, y2 = min(y1, org2[1]), max(y2, org2[1])
         img = cv2.rectangle(img, (x1 - s, y1 - s - textSize[0][1] - 2), (x2 + textSize[0][0] + s, y2 + textSize[1] + s), (255, 255, 255), -1)
 
         img = cv2.putText(img, s1, org1, font, fontScale, color, thickness, cv2.LINE_AA)
         if len(fns) > 1:
             img = cv2.putText(img, s2, org2, font, fontScale, color, thickness, cv2.LINE_AA)
+
+    return img
+
+
+def main():
+    if len(sys.argv) <= 1:
+        print(f'Usage: {sys.argv[0]} <filename> ...')
+        sys.exit(1)
+
+    fns = sys.argv[1:]
+
+    rv = load_images(fns)
+
+    compared_metadata(fns, rv)
+
+    mn, mx = find_range(fns, rv)
+
+    if False:
+        for i in range(len(rv)):
+            m = rv[i][1].flatten()
+            plt.hist(m, bins=128, range=(mn, mx))
+            plt.show()
+
+    cmap = cv2.imread('pal.png')
+    if cmap is not None:
+        cmap = cmap[0, :, :]
+        print('Read colormap with shape:', cmap.shape)
+
+    for i, fn in enumerate(fns):
+        img = create_image(rv[i][1], mn, mx, fns, cmap)
+        if img is None:
+            print(f'Unable to process {fn}')
+            continue
 
         cv2.imwrite(f'{i:04}.png', img)
 
