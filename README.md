@@ -1,5 +1,5 @@
 # flir-batch-process
-Batch process FLIR radiometric JPEGs and generate detailed images with consistent palettes 
+Batch process FLIR radiometric (thermal) JPEGs and generate clean lossless images with consistent scale and palette
 
 Given several FLIR radiometric JPEGs, find the temperature range across all images, use the same scale 
 and palette for all images, and write lossless final images with minimal chart junk.
