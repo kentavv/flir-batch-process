@@ -284,13 +284,13 @@ def main():
             textSize2 = cv2.getTextSize(s2, fontFace=font, fontScale=fontScale, thickness=thickness)
             textSize = ((max(textSize[0][0], textSize2[0][0]), max(textSize[0][1], textSize2[0][1])), max(textSize[1], textSize2[1]))
 
+        s = 2
         org1 = (10, 30)
-        org2 = (10, 60)
+        org2 = (org1[0], org1[1] + textSize[0][1] + textSize[1] + s)
         x1 = min(org1[0], org2[0]) if len(fns) > 1 else org1[0]
         x2 = max(org1[0], org2[0]) if len(fns) > 1 else org1[0]
         y1 = min(org1[1], org2[1]) if len(fns) > 1 else org1[1]
         y2 = max(org1[1], org2[1]) if len(fns) > 1 else org1[1]
-        s = 2
         img = cv2.rectangle(img, (x1 - s, y1 - s - textSize[0][1] - 2), (x2 + textSize[0][0] + s, y2 + textSize[1] + s), (255, 255, 255), -1)
 
         img = cv2.putText(img, s1, org1, font, fontScale, color, thickness, cv2.LINE_AA)
