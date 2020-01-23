@@ -244,21 +244,40 @@ def create_image(img, mn, mx, fns, cmap):
     sf = 4
     img = cv2.resize(img, None, fx=sf, fy=sf, interpolation=cv2.INTER_CUBIC)
 
-    cv2.circle(img, (min_sp[0] * sf, min_sp[1] * sf), 11, 1, 2)
-    cv2.circle(img, (max_sp[0] * sf, max_sp[1] * sf), 11, 0, 2)
+    if True:
+        # Highlight the minimum and maximum values
+        cv2.circle(img, (min_sp[0] * sf, min_sp[1] * sf), 11, 1, 2)
+        cv2.circle(img, (max_sp[0] * sf, max_sp[1] * sf), 11, 0, 2)
 
-    if cmap is not None and False:
-        c = []
+    if True:
+        # Draw a palette placeholder
+
+        for i in range(256):
+            x, y = 10, 80 + (256 - i - 1)
+            img = cv2.line(img, (x, y), (x + 20, y), i / 255.)
+
+    if cmap is not None:
         xp = np.linspace(0, 1, cmap.shape[0])
         c = [np.interp(img, xp, cmap[:, j]) for j in range(3)]
         img = cv2.merge(c)
         img = np.clip(img, 0, 255).astype(np.uint8)
     else:
         img = np.clip(img * 255, 0, 255).astype(np.uint8)
-        img = cv2.applyColorMap(img, cv2.COLORMAP_JET)
+        # img = cv2.applyColorMap(img, cv2.COLORMAP_JET)
+        # img = cv2.applyColorMap(img, cv2.COLORMAP_HOT)
+        img = cv2.applyColorMap(img, cv2.COLORMAP_PLASMA)
         # img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
     if True:
+        # Outline the palette
+
+        x1, y1 = 10, 80
+        x2, y2 = x1 + 20, y1 + 256
+        img = cv2.rectangle(img, (x1, y1), (x2, y2), (255, 255, 255), 1)
+
+    if True:
+        # Draw the legend text
+
         font = cv2.FONT_HERSHEY_SIMPLEX
         fontScale = .6
         color = (0, 0, 0)
