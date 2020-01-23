@@ -1,0 +1,120 @@
+ExifTool Version Number         : 10.80
+File Name                       : FLIR0002.jpg
+Directory                       : .
+File Size                       : 73 kB
+File Modification Date/Time     : 2018:05:02 13:23:00-05:00
+File Access Date/Time           : 2018:05:04 22:09:09-05:00
+File Inode Change Date/Time     : 2018:05:04 22:07:55-05:00
+File Permissions                : rwxrwxrwx
+File Type                       : JPEG
+File Type Extension             : jpg
+MIME Type                       : image/jpeg
+JFIF Version                    : 1.01
+Exif Byte Order                 : Little-endian (Intel, II)
+Make                            : FLIR Systems AB
+Camera Model Name               : FLIR E5
+Orientation                     : Horizontal (normal)
+X Resolution                    : 72
+Y Resolution                    : 72
+Resolution Unit                 : inches
+Software                        : 2.3.0
+Modify Date                     : 2018:05:02 13:22:59
+Y Cb Cr Positioning             : Centered
+Exposure Time                   : 1/27
+Exif Version                    : 0220
+Create Date                     : 2018:05:02 13:22:59
+Components Configuration        : -, Cr, Cb, Y
+Focal Length                    : 6.5 mm
+Image Temperature Max           : 309
+Image Temperature Min           : 300
+Flashpix Version                : 0100
+Color Space                     : sRGB
+Exif Image Width                : 320
+Exif Image Height               : 240
+Digital Zoom Ratio              : 1
+Image Unique ID                 : 5C37F50BAAE785CF162BDA611C195C0C
+Compression                     : JPEG (old-style)
+Thumbnail Offset                : 1874
+Thumbnail Length                : 2523
+Creator Software                : 
+Emissivity                      : 0.95
+Object Distance                 : 0.00 m
+Reflected Apparent Temperature  : 20.0 C
+Atmospheric Temperature         : 20.0 C
+IR Window Temperature           : 20.0 C
+IR Window Transmission          : 1.00
+Relative Humidity               : 50.0 %
+Planck R1                       : 14144.423
+Planck B                        : 1385.5
+Planck F                        : 2.5
+Atmospheric Trans Alpha 1       : 0.006569
+Atmospheric Trans Alpha 2       : 0.012620
+Atmospheric Trans Beta 1        : -0.002276
+Atmospheric Trans Beta 2        : -0.006670
+Atmospheric Trans X             : 1.900000
+Camera Temperature Range Max    : 250.0 C
+Camera Temperature Range Min    : -20.0 C
+Camera Temperature Max Clip     : 280.0 C
+Camera Temperature Min Clip     : -40.0 C
+Camera Temperature Max Warn     : 250.0 C
+Camera Temperature Min Warn     : -20.0 C
+Camera Temperature Max Saturated: 280.0 C
+Camera Temperature Min Saturated: -60.0 C
+Camera Model                    : FLIR E5
+Camera Part Number              : 63905-0501
+Camera Serial Number            : 63904677
+Camera Software                 : 25.0.0
+Lens Model                      : FOL7
+Lens Part Number                : 
+Lens Serial Number              : 
+Field Of View                   : 45.0 deg
+Filter Model                    : 
+Filter Part Number              : 
+Filter Serial Number            : 
+Planck O                        : -7494
+Planck R2                       : 0.027700923
+Raw Value Median                : 12994
+Raw Value Range                 : 692
+Date/Time Original              : 2018:05:02 13:22:59.880+00:00
+Focus Step Count                : 70
+Focus Distance                  : 0.0 m
+Frame Rate                      : 9
+Palette Colors                  : 224
+Above Color                     : 170 128 128
+Below Color                     : 50 128 128
+Overflow Color                  : 67 216 98
+Underflow Color                 : 41 110 240
+Isotherm 1 Color                : 100 128 128
+Isotherm 2 Color                : 100 110 240
+Palette Method                  : 0
+Palette Stretch                 : 2
+Palette File Name               : \FlashBFS\system\iron.pal
+Palette Name                    : Iron
+Palette                         : (Binary data 672 bytes, use -b option to extract)
+Raw Thermal Image Width         : 120
+Raw Thermal Image Height        : 90
+Raw Thermal Image Type          : PNG
+Raw Thermal Image               : (Binary data 12709 bytes, use -b option to extract)
+Real 2 IR                       : 1.31339955329895
+Offset X                        : +9
+Offset Y                        : -1
+PiP X1                          : 0
+PiP X2                          : 120
+PiP Y1                          : 0
+PiP Y2                          : 90
+Embedded Image Width            : 640
+Embedded Image Height           : 480
+Embedded Image Type             : JPG
+Embedded Image                  : (Binary data 34015 bytes, use -b option to extract)
+Image Width                     : 320
+Image Height                    : 240
+Encoding Process                : Baseline DCT, Huffman coding
+Bits Per Sample                 : 8
+Color Components                : 3
+Y Cb Cr Sub Sampling            : YCbCr4:2:0 (2 2)
+Image Size                      : 320x240
+Megapixels                      : 0.077
+Peak Spectral Sensitivity       : 10.4 um
+Shutter Speed                   : 1/27
+Thumbnail Image                 : (Binary data 2523 bytes, use -b option to extract)
+Focal Length                    : 6.5 mm

@@ -1,0 +1,7 @@
+use these to create masks and add them to the masks foldoer
+  425  for ifn in FLIR*.jpg; do ofn=`echo $ifn | sed 's/\.jpg/\.png/'`; php flir.php --resize 100% --clut -i $ifn -o $ofn; done
+these are the input to the analysis program
+  464  for ifn in FLIR*.jpg; do ofn=`echo $ifn | sed 's/\.jpg/\.png/'`; ./extract.sh $ifn ; mv t2.png $ofn; done
+
+Use the masks to mask the new images, calculate the temperature values, and report them in an array
+./process.py
