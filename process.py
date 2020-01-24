@@ -2,12 +2,15 @@
 
 import base64
 import json
+import os
 import subprocess
 import sys
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+from pyemd import emd
+from sklearn.metrics.pairwise import euclidean_distances
 
 
 def c2k(c):
@@ -20,6 +23,9 @@ def k2c(c):
 
 def c2f(x):
     return x * 9 / 5. + 32.
+
+
+warn_distance = True
 
 
 def configure(ss):
@@ -63,9 +69,21 @@ def configure(ss):
         if 'C' in d['Refl_Temp']:
             d['Refl_Temp'] = c2k(float(d['Refl_Temp'].split()[0]))
 
-        d['Distance'] = ss['SubjectDistance']
+        try:
+            d['Distance'] = ss['SubjectDistance']
+        except KeyError:
+            try:
+                d['Distance'] = ss['ObjectDistance']
+            except KeyError:
+                d['Distance'] = ss['FocusDistance']
         if 'm' in d['Distance']:
             d['Distance'] = float(d['Distance'].split()[0])
+        if d['Distance'] == 0:
+            d['Distance'] = 0.2
+            global warn_distance
+            if warn_distance:
+                print('Warning: Distance = 0., increasing to 0.2, disabling warning')
+                warn_distance = False
 
         # constants
         d['Alpha1'] = ss['AtmosphericTransAlpha1']
@@ -136,11 +154,11 @@ def process(fn_in, fn_mask):
         return None
 
     s = aa.stdout.strip()[1:-1]
-    ss = json.loads(s)
+    metadata = json.loads(s)
 
     # print('\',\n\''.join([x for x in ss]))
 
-    aa = ss['RawThermalImage']
+    aa = metadata['RawThermalImage']
     s = base64.b64decode(aa[7:])
     s = np.frombuffer(s, np.uint8)
     image = cv2.imdecode(s, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
@@ -148,20 +166,54 @@ def process(fn_in, fn_mask):
     image = image.byteswap()
     pixel = image
 
-    d = configure(ss)
+    thermo_calc_params = configure(metadata)
 
-    # a = c2f(f_without_distance(pixel, d))
-    a = c2f(f_with_distance(pixel, d))
+    # img = c2f(f_without_distance(pixel, thermo_calc_params))
+    img = c2f(f_with_distance(pixel, thermo_calc_params))
 
-    return a, ss
+    mask = None
+    if fn_mask:
+        mask = cv2.imread(fn_mask, cv2.IMREAD_UNCHANGED)
+        if mask is None:
+            print('Unable to read mask:', fn_in)
+        else:
+            mask2 = np.ones(mask.shape[:2], np.float)
+            mask2[mask[:, :, 3] == 0] = 0
+            # mask2[mask3[:, :] == 0] = 0
+
+            if True:
+                # Don't confuse the edge created by a resize (increase in size) as a border that should be removed.
+                # Look at the 1:1 images to determine if there is a need to erode the edges.
+
+                n1 = int(np.sum(mask2))
+
+                mask3 = np.zeros(mask.shape[:2], np.uint8)
+                mask3[mask[:, :, 3] != 0] = 255
+
+                # A (3,3) cross removes roughly one pixel width
+                kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
+                # A (3,3) rectangle removes roughly two pixel width
+                # kernel = np.ones((3, 3), np.uint8)
+
+                mask3 = cv2.erode(mask3, kernel, iterations=1)
+                mask2[mask3 == 0] = 0
+
+                n2 = int(np.sum(mask2))
+                print(f'Erosion pixel count reduction: {n1} - {n2} = {n1 - n2}')
+
+            mask = mask2
+
+    return img, mask, metadata
 
 
 def load_images(fns):
     rv = []
     for i, fn in enumerate(fns):
-        mask_fn = ''
-        a, ss = process(fn, mask_fn)
-        rv += [[i, a, ss]]
+        mask_fn = os.path.join(os.path.dirname(fn), 'masks', os.path.basename(fn).replace('.jpg', '.png'))
+        if not os.path.exists(mask_fn):
+            mask_fn = ''
+        img, mask, metadata = process(fn, mask_fn)
+        rv += [[i, img, mask, metadata]]
 
     return rv
 
@@ -193,7 +245,12 @@ def compared_metadata(fns, rv):
                         'PiPX2',
                         'PiPY1',
                         'PiPY2',
-                        'EmbeddedImage']
+                        'EmbeddedImage',
+                        'RawValueMedian',
+                        'RawValueRange',
+                        'ThumbnailLength',
+                        'ThumbnailImage'
+        ]
 
         for k in sorted((set(b.keys()) | set(c.keys())) - set(ignored_keys)):
             if b[k] != c[k]:
@@ -206,17 +263,19 @@ def compared_metadata(fns, rv):
 def find_range(fns, rv):
     mn = 1000
     mx = -1000
-    print('id,min,mean,median,max,overall_min,overall_max')
+    print('id, filename, min, mean, median, max, overall_min, overall_max')
     for i, fn in enumerate(fns):
-        m = rv[i][1]
+        img, mask = rv[i][1:3]
+        if mask is not None:
+            img = img[mask == 1]
 
-        v = [i, fn, np.min(m), np.mean(m), np.median(m), np.max(m)]
+        v = [i, fn, np.min(img), np.mean(img), np.median(img), np.max(img)]
 
         mn = min(mn, v[2])
         mx = max(mx, v[-1])
         v += [mn, mx]
 
-        print(','.join(map(str, v)))
+        print(', '.join(map(str, v)))
 
     if False:
         mn = mn - (mx - mn) * .1
@@ -228,21 +287,48 @@ def find_range(fns, rv):
     return mn, mx
 
 
-def create_image(img, mn, mx, fns, cmap):
+def create_image(img, mask, mn, mx, fns, cmap):
     def h(img, v):
         # Return the location of the first pixel equal to the value v.
-        m = np.where(img == v)
+        if mask is not None:
+            m = np.where(np.multiply(img, mask) == v)
+        else:
+            m = np.where(img == v)
         x, y = m[1][0], m[0][0]
         rv = (x, y, img[y, x])
         return rv
 
-    min_sp = h(img, img.min())
-    max_sp = h(img, img.max())
+    if mask is not None:
+        min_sp = h(img, img[mask == 1].min())
+        max_sp = h(img, img[mask == 1].max())
+    else:
+        min_sp = h(img, img.min())
+        max_sp = h(img, img.max())
 
     img = (img - mn) / float(mx - mn)
 
     sf = 4
-    img = cv2.resize(img, None, fx=sf, fy=sf, interpolation=cv2.INTER_CUBIC)
+    if sf != 1:
+        if mask is not None:
+            # When scaling a masked image, cubic interpolation will create very misleading false edge artifacts at masked edges.
+            # Nearest also does but to a lesser extent. Linear interpolation is the winner when masking.
+            # The artifacts come from interpolating measurements with zero values from areas masked off.
+            # Masking was moved to after scaling, which requires resizing the mask. This may only shift the problem around.
+
+            # img = cv2.resize(img, None, fx=sf, fy=sf, interpolation=cv2.INTER_NEAREST)
+            img = cv2.resize(img, None, fx=sf, fy=sf, interpolation=cv2.INTER_LINEAR)
+        else:
+            # When not using a mask, use cubic interpolation, which seems to generate slightly sharper images.
+            img = cv2.resize(img, None, fx=sf, fy=sf, interpolation=cv2.INTER_CUBIC)
+
+        if mask is not None:
+            mask = cv2.resize(mask, None, fx=sf, fy=sf, interpolation=cv2.INTER_LINEAR)
+
+    if mask is not None:
+        # This could be a resized mask, which will have a continuum of values [0, 1] instead of only 0 or 1.
+        # So, the comparison must be made against 1, which are closest to values from the original mask.
+        # There's probably some safe non-one threshold that could be used. Close enough.
+        img[mask != 1] = 0
 
     if True:
         # Highlight the minimum and maximum values
@@ -308,6 +394,46 @@ def create_image(img, mn, mx, fns, cmap):
     return img
 
 
+def perform_analysis(rv, fns, mn, mx):
+    hist = []
+    nbins = 128
+
+    b = []
+    for i, fn in enumerate(fns):
+        img, mask = rv[i][1:3]
+        if mask is not None:
+            img = img[mask == 1]
+
+        # 128 bins with a consistent range
+        h, b = np.histogram(img, bins=nbins, range=(mn, mx))
+
+        # Estimate the cumulative distribution function
+        # Use cumulative sum to smooth the noise present in a histogram of quantized data
+        cdf = np.cumsum(h * np.diff(b))
+
+        # Normalize, removing effect of size
+        cdf /= np.sum(cdf)
+
+        hist += [cdf]
+
+    rv2 = np.zeros([len(rv), len(rv)])
+
+    bin_centers = (b[1:] + b[:-1]) / 2
+    # w = euclidean_distances(np.arange(nbins).reshape(-1, 1), np.arange(nbins).reshape(-1, 1)) / (nbins - 1.)
+    w = euclidean_distances(bin_centers.reshape(-1, 1), bin_centers.reshape(-1, 1))
+
+    for i, fn_i in enumerate(fns):
+        print(f'{i + 1}/{len(fns)}...')
+        a = hist[i]
+        for j, fn_j in enumerate(fns):
+            b = hist[j]
+            v = emd(a, b, w)
+            rv2[i, j] = v
+    np.savez('emd_results.npz', rv2)
+    # np.savetxt('emd_results.csv', rv2, delimiter=',')
+    print('To plot the EMD results run ./old/plot_emd_mat.py')
+
+
 def main():
     if len(sys.argv) <= 1:
         print(f'Usage: {sys.argv[0]} <filename> ...')
@@ -323,7 +449,11 @@ def main():
 
     if False:
         for i in range(len(rv)):
-            m = rv[i][1].flatten()
+            img, mask = rv[i][1:3]
+            if mask is not None:
+                m = img[mask == 1]
+            else:
+                m = img.flatten()
             plt.hist(m, bins=128, range=(mn, mx))
             plt.show()
 
@@ -333,12 +463,15 @@ def main():
         print('Read colormap with shape:', cmap.shape)
 
     for i, fn in enumerate(fns):
-        img = create_image(rv[i][1], mn, mx, fns, cmap)
+        img, mask = rv[i][1:3]
+        img = create_image(img, mask, mn, mx, fns, cmap)
         if img is None:
             print(f'Unable to process {fn}')
             continue
 
         cv2.imwrite(f'{i:04}.png', img)
+
+    # perform_analysis(rv, fns, mn, mx)
 
 
 main()
