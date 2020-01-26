@@ -12,6 +12,8 @@ import numpy as np
 from pyemd import emd
 from sklearn.metrics.pairwise import euclidean_distances
 
+palette_f = ['exif', 'file', 'hardcoded'][0]
+
 
 def c2k(c):
     return c + 273.15
@@ -164,12 +166,21 @@ def process(fn_in, fn_mask):
     image = cv2.imdecode(s, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
 
     image = image.byteswap()
-    pixel = image
+
+    palette = None
+    if palette_f == 'exif':
+        n_pal_colors = metadata['PaletteColors']
+        aa = metadata['Palette']
+        s = base64.b64decode(aa[7:])
+        s = np.frombuffer(s, np.uint8)
+        s.shape = (n_pal_colors, 1, 3)
+        palette = cv2.cvtColor(s, cv2.COLOR_YCrCb2BGR)
+        palette.shape = (n_pal_colors, 3)
 
     thermo_calc_params = configure(metadata)
 
-    # img = c2f(f_without_distance(pixel, thermo_calc_params))
-    img = c2f(f_with_distance(pixel, thermo_calc_params))
+    # img = c2f(f_without_distance(image, thermo_calc_params))
+    img = c2f(f_with_distance(image, thermo_calc_params))
 
     mask = None
     if fn_mask:
@@ -203,19 +214,20 @@ def process(fn_in, fn_mask):
 
             mask = mask2
 
-    return img, mask, metadata
+    return img, mask, metadata, palette
 
 
 def load_images(fns):
     rv = []
+    palette = None
     for i, fn in enumerate(fns):
         mask_fn = os.path.join(os.path.dirname(fn), 'masks', os.path.basename(fn).replace('.jpg', '.png'))
         if not os.path.exists(mask_fn):
             mask_fn = ''
-        img, mask, metadata = process(fn, mask_fn)
+        img, mask, metadata, palette = process(fn, mask_fn)
         rv += [[i, img, mask, metadata]]
 
-    return rv
+    return rv, palette
 
 
 def compared_metadata(fns, rv):
@@ -250,7 +262,7 @@ def compared_metadata(fns, rv):
                         'RawValueRange',
                         'ThumbnailLength',
                         'ThumbnailImage'
-        ]
+                        ]
 
         for k in sorted((set(b.keys()) | set(c.keys())) - set(ignored_keys)):
             if b[k] != c[k]:
@@ -287,7 +299,7 @@ def find_range(fns, rv):
     return mn, mx
 
 
-def create_image(img, mask, mn, mx, fns, cmap):
+def create_image(img, mask, mn, mx, fns, palette):
     def h(img, v):
         # Return the location of the first pixel equal to the value v.
         if mask is not None:
@@ -342,17 +354,17 @@ def create_image(img, mask, mn, mx, fns, cmap):
             x, y = 10, 80 + (256 - i - 1)
             img = cv2.line(img, (x, y), (x + 20, y), i / 255.)
 
-    if cmap is not None:
-        xp = np.linspace(0, 1, cmap.shape[0])
-        c = [np.interp(img, xp, cmap[:, j]) for j in range(3)]
-        img = cv2.merge(c)
-        img = np.clip(img, 0, 255).astype(np.uint8)
-    else:
+    if palette_f == 'hardcoded' or palette is None:
         img = np.clip(img * 255, 0, 255).astype(np.uint8)
         # img = cv2.applyColorMap(img, cv2.COLORMAP_JET)
         # img = cv2.applyColorMap(img, cv2.COLORMAP_HOT)
         img = cv2.applyColorMap(img, cv2.COLORMAP_PLASMA)
         # img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    else:
+        xp = np.linspace(0, 1, palette.shape[0])
+        c = [np.interp(img, xp, palette[:, j]) for j in range(3)]
+        img = cv2.merge(c)
+        img = np.clip(img, 0, 255).astype(np.uint8)
 
     if True:
         # Outline the palette
@@ -441,7 +453,7 @@ def main():
 
     fns = sys.argv[1:]
 
-    rv = load_images(fns)
+    rv, palette = load_images(fns)
 
     compared_metadata(fns, rv)
 
@@ -457,14 +469,15 @@ def main():
             plt.hist(m, bins=128, range=(mn, mx))
             plt.show()
 
-    cmap = cv2.imread('pal.png')
-    if cmap is not None:
-        cmap = cmap[0, :, :]
-        print('Read colormap with shape:', cmap.shape)
+    if palette_f == 'file':
+        palette = cv2.imread('pal.png')
+        if palette is not None:
+            palette = palette[0, :, :]
+            print('Read colormap with shape:', palette.shape)
 
     for i, fn in enumerate(fns):
         img, mask = rv[i][1:3]
-        img = create_image(img, mask, mn, mx, fns, cmap)
+        img = create_image(img, mask, mn, mx, fns, palette)
         if img is None:
             print(f'Unable to process {fn}')
             continue
