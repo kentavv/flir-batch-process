@@ -347,12 +347,17 @@ def create_image(img, mask, mn, mx, fns, palette):
         cv2.circle(img, (min_sp[0] * sf, min_sp[1] * sf), 11, 1, 2)
         cv2.circle(img, (max_sp[0] * sf, max_sp[1] * sf), 11, 0, 2)
 
-    if True:
+    draw_palette_f = True
+    palette_position = (10, 80)
+    palette_position_size = (20, 256)
+
+    if draw_palette_f:
         # Draw a palette placeholder
 
-        for i in range(256):
-            x, y = 10, 80 + (256 - i - 1)
-            img = cv2.line(img, (x, y), (x + 20, y), i / 255.)
+        for i in range(palette_position_size[1]):
+            x, y = palette_position
+            y += (palette_position_size[1] - i - 1)
+            img = cv2.line(img, (x, y), (x + palette_position_size[0], y), i / (palette_position_size[1] - 1.))
 
     if palette_f == 'hardcoded' or palette is None:
         img = np.clip(img * 255, 0, 255).astype(np.uint8)
@@ -366,11 +371,11 @@ def create_image(img, mask, mn, mx, fns, palette):
         img = cv2.merge(c)
         img = np.clip(img, 0, 255).astype(np.uint8)
 
-    if True:
+    if draw_palette_f:
         # Outline the palette
 
-        x1, y1 = 10, 80
-        x2, y2 = x1 + 20, y1 + 256
+        x1, y1 = palette_position
+        x2, y2 = x1 + palette_position_size[0], y1 + palette_position_size[1]
         img = cv2.rectangle(img, (x1, y1), (x2, y2), (255, 255, 255), 1)
 
     if True:
