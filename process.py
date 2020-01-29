@@ -376,9 +376,47 @@ def create_image(img, mask, mn, mx, fns, palette):
 
         x1, y1 = palette_position
         x2, y2 = x1 + palette_position_size[0], y1 + palette_position_size[1]
-        img = cv2.rectangle(img, (x1, y1), (x2, y2), (255, 255, 255), 1)
+        img = cv2.rectangle(img, (x1, y1-1), (x2, y2), (255, 255, 255), 1)
 
-    if True:
+    if draw_palette_f:
+        # Draw the legend text on the palette
+
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        fontScale = .6
+        color = (0, 0, 0)
+        thickness = 1
+        vals = [min_sp[2], max_sp[2], mn, mx]
+        lbls = [f'{x:.1f} F' for x in vals]
+
+        textSize = ((0,0), 0)
+        szs = []
+        for i in range(len(lbls)):
+            sz = cv2.getTextSize(lbls[i], fontFace=font, fontScale=fontScale, thickness=thickness)
+            szs += [sz]
+            textSize = ((max(textSize[0][0], sz[0][0]), max(textSize[0][1], sz[0][1])), max(textSize[1], sz[1]))
+
+        s = 1
+        os = 4
+
+        for i, (lbl, sz, val) in enumerate(zip(lbls, szs, vals)):
+            if i == 2:
+                x, y = palette_position[0] + 1, palette_position[1] + palette_position_size[1] + sz[0][1] + os + textSize[0][1]/2 + 0
+            elif i == 3:
+                x, y = palette_position[0] + 1, palette_position[1] - os - textSize[0][1]/2 - 2
+            elif i == 0: # and (abs(vals[0] - vals[2]) > .001):
+                v = 1 - (val - mn) / (mx - mn)
+                x, y = palette_position[0] + palette_position_size[0] + os, palette_position[1] + sz[0][1] / 2 + palette_position_size[1] * v - 1
+            elif i == 1: # and (abs(vals[1] - vals[3]) > .001):
+                v = 1 - (val - mn) / (mx - mn)
+                x, y = palette_position[0] + palette_position_size[0] + os, palette_position[1] + sz[0][1] / 2 + palette_position_size[1] * v - 1
+            else:
+                continue
+
+            x, y = int(round(x)), int(round(y))
+
+            img = cv2.rectangle(img, (x - s, y - s - sz[0][1]), (x + sz[0][0] + s, y + s + 1), (255, 255, 255), -1)
+            img = cv2.putText(img, lbl, (x,y), font, fontScale, color, thickness, cv2.LINE_AA)
+    else:
         # Draw the legend text
 
         font = cv2.FONT_HERSHEY_SIMPLEX
