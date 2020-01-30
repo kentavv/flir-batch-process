@@ -489,12 +489,29 @@ def perform_analysis(rv, fns, mn, mx):
     print('To plot the EMD results run ./old/plot_emd_mat.py')
 
 
+def filter_filenames(fns):
+    fns2 = []
+    for fn in fns:
+        if not os.path.isfile(fn):
+            print('Warning: Ignoring non-file:', fn)
+        elif os.path.splitext(fn)[1].lower() not in ['.jpg', '.jpeg']:
+            print('Warning: Ignoring non-jpeg file:', fn)
+        elif not os.access(fn, os.R_OK):
+            print('Warning: Ignoring inaccessible file:', fn)
+        else:
+            fns2 += [fn]
+
+    return fns2
+
+
 def main():
     if len(sys.argv) <= 1:
         print(f'Usage: {sys.argv[0]} <filename> ...')
         sys.exit(1)
 
     fns = sys.argv[1:]
+    fns = filter_filenames(fns)
+    print(fns)
 
     rv, palette = load_images(fns)
 
@@ -525,7 +542,10 @@ def main():
             print(f'Unable to process {fn}')
             continue
 
-        cv2.imwrite(f'{i:04}.png', img)
+        # fn2 = f'{i:04}.png'
+        fn2 = os.path.splitext(os.path.basename(fn))[0] + '.png'
+
+        cv2.imwrite(fn2, img)
 
     # perform_analysis(rv, fns, mn, mx)
 
